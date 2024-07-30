@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -15,10 +16,15 @@ type Client struct {
 	baseURL string
 }
 
+type XMLName struct {
+	Space string `json:"Space"`
+	Local string `json:"Local"`
+}
+
 type Node struct {
-	XMLName string `json:"xmlname"`
-	Value   string `json:"value"`
-	Nodes   []Node `json:"nodes"`
+	XMLName XMLName `json:"XMLName"`
+	Value   string  `json:"Value"`
+	Nodes   []Node  `json:"Nodes"`
 }
 
 type APIResponse struct {
@@ -38,10 +44,10 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	}
 
 	// Set headers
-	if c.token != "" {
-		req.Header.Set("Authorization", c.token)
-	} else {
+	if endpoint == "/authorize" {
 		req.Header.Set("Authorization", c.apiKey)
+	} else {
+		req.Header.Set("Authorization", c.token)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -69,7 +75,7 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Println("Error closing body:", err)
+			return
 		}
 	}(resp.Body)
 
@@ -79,6 +85,7 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	}
 
 	if resp.StatusCode >= 400 {
+		log.Printf("Request to %s failed with status: %d, response: %s", url, resp.StatusCode, respBody)
 		return nil, errors.New(string(respBody))
 	}
 
@@ -86,13 +93,39 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 }
 
 func (c *Client) Authorize() error {
-	resp, err := c.request("GET", "/authorize", nil, nil)
+	url := fmt.Sprintf("%s%s", c.baseURL, "/authorize")
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
 
+	req.Header.Set("Authorization", c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println("Error closing body:", err)
+		}
+	}(resp.Body)
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode >= 400 {
+		log.Printf("Authorization request failed with status: %d, response: %s", resp.StatusCode, respBody)
+		return errors.New(string(respBody))
+	}
+
 	var result map[string]string
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(respBody, &result)
 	if err != nil {
 		return err
 	}
