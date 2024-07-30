@@ -38,10 +38,10 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	}
 
 	// Set headers
-	if endpoint == "/authorize" {
-		req.Header.Set("Authorization", c.apiKey)
-	} else {
+	if c.token != "" {
 		req.Header.Set("Authorization", c.token)
+	} else {
+		req.Header.Set("Authorization", c.apiKey)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
