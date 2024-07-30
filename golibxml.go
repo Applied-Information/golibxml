@@ -1,4 +1,4 @@
-package golibxml
+package xmlapi
 
 import (
 	"bytes"
@@ -9,32 +9,27 @@ import (
 	"net/http"
 )
 
-// Client represents a client for the API.
 type Client struct {
 	apiKey  string
 	token   string
 	baseURL string
 }
 
-// Node represents a node in an XML file.
 type Node struct {
 	XMLName string `json:"xmlname"`
 	Value   string `json:"value"`
 	Nodes   []Node `json:"nodes"`
 }
 
-// APIResponse represents a response from the API.
 type APIResponse struct {
 	Data  string `json:"data"`
 	Error string `json:"error"`
 }
 
-// NewClient creates a new client.
 func NewClient(apiKey, baseURL string) *Client {
 	return &Client{apiKey: apiKey, baseURL: baseURL}
 }
 
-// request makes a request to the API.
 func (c *Client) request(method, endpoint string, params map[string]string, body interface{}) ([]byte, error) {
 	url := fmt.Sprintf("%s%s", c.baseURL, endpoint)
 	req, err := http.NewRequest(method, url, nil)
@@ -43,7 +38,9 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	}
 
 	// Set headers
-	if c.token != "" {
+	if endpoint == "/authorize" {
+		req.Header.Set("Authorization", c.apiKey)
+	} else {
 		req.Header.Set("Authorization", c.token)
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -72,7 +69,7 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error closing body:", err)
 		}
 	}(resp.Body)
 
@@ -88,7 +85,6 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 	return respBody, nil
 }
 
-// Authorize authorizes the client with the API.
 func (c *Client) Authorize() error {
 	resp, err := c.request("GET", "/authorize", nil, nil)
 	if err != nil {
@@ -109,7 +105,6 @@ func (c *Client) Authorize() error {
 	return errors.New("authorization failed")
 }
 
-// CopyDevice copies a device. If a filename is provided only that file is copied, otherwise all files are copied.
 func (c *Client) CopyDevice(deviceID, newDeviceID, filename string, overwrite bool) (string, error) {
 	params := map[string]string{
 		"deviceid":     deviceID,
@@ -136,7 +131,6 @@ func (c *Client) CopyDevice(deviceID, newDeviceID, filename string, overwrite bo
 	return result.Data, nil
 }
 
-// CreateFile creates a new XML file.
 func (c *Client) CreateFile(deviceID, filename, rootName string) (string, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
@@ -162,7 +156,6 @@ func (c *Client) CreateFile(deviceID, filename, rootName string) (string, error)
 	return result.Data, nil
 }
 
-// CreateNode creates a new node in the XML file.
 func (c *Client) CreateNode(deviceID, filename, parentPath, tag, value string) (string, error) {
 	params := map[string]string{
 		"deviceid":    deviceID,
@@ -190,7 +183,6 @@ func (c *Client) CreateNode(deviceID, filename, parentPath, tag, value string) (
 	return result.Data, nil
 }
 
-// DeleteNode deletes a node from the XML file.
 func (c *Client) DeleteNode(deviceID, filename, path string) (string, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
@@ -216,7 +208,6 @@ func (c *Client) DeleteNode(deviceID, filename, path string) (string, error) {
 	return result.Data, nil
 }
 
-// DeleteFile deletes an XML file.
 func (c *Client) DeleteFile(deviceID, filename string) (string, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
@@ -241,7 +232,6 @@ func (c *Client) DeleteFile(deviceID, filename string) (string, error) {
 	return result.Data, nil
 }
 
-// ListFiles lists the XML files for a device.
 func (c *Client) ListFiles(deviceID string) (string, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
@@ -265,7 +255,6 @@ func (c *Client) ListFiles(deviceID string) (string, error) {
 	return result.Data, nil
 }
 
-// ReadNode reads a node from the XML file.
 func (c *Client) ReadNode(deviceID, filename, path string) (*Node, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
@@ -287,7 +276,6 @@ func (c *Client) ReadNode(deviceID, filename, path string) (*Node, error) {
 	return &node, nil
 }
 
-// UpdateNode updates a node in the XML file.
 func (c *Client) UpdateNode(deviceID, filename, path, value string) (string, error) {
 	params := map[string]string{
 		"deviceid": deviceID,
