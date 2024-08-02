@@ -47,13 +47,19 @@ type AuthorizationResponse struct {
 	Token   string `json:"token"`
 }
 
+// Response wraps the API response and status code
+type Response struct {
+	StatusCode int
+	Body       []byte
+}
+
 // NewClient creates a new XMLAPI client
 func NewClient(apiKey, baseURL string) *Client {
 	return &Client{apiKey: apiKey, baseURL: baseURL}
 }
 
 // request is a helper function to make an HTTP request
-func (c *Client) request(method, endpoint string, params map[string]string, body interface{}) ([]byte, error) {
+func (c *Client) request(method, endpoint string, params map[string]string, body interface{}) (*Response, error) {
 	url := fmt.Sprintf("%s%s", c.baseURL, endpoint)
 
 	var jsonBody []byte
@@ -151,10 +157,10 @@ func (c *Client) request(method, endpoint string, params map[string]string, body
 
 	if resp.StatusCode >= 400 {
 		log.Printf("Request to %s failed with status: %d, response: %s", url, resp.StatusCode, respBody)
-		return nil, errors.New(string(respBody))
+		return &Response{StatusCode: resp.StatusCode, Body: respBody}, errors.New(string(respBody))
 	}
 
-	return respBody, nil
+	return &Response{StatusCode: resp.StatusCode, Body: respBody}, nil
 }
 
 // Authorize authorizes the client and obtains a token
@@ -215,7 +221,7 @@ func (c *Client) CopyDevice(deviceID, newDeviceID, filename string, overwrite bo
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +247,7 @@ func (c *Client) CreateFile(deviceID, filename, rootName string) (string, error)
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
@@ -269,7 +275,7 @@ func (c *Client) CreateNode(deviceID, filename, parentPath, tag, value string) (
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
@@ -295,7 +301,7 @@ func (c *Client) DeleteNode(deviceID, filename, path string) (string, error) {
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
@@ -320,7 +326,7 @@ func (c *Client) DeleteFile(deviceID, filename string) (string, error) {
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
@@ -344,7 +350,7 @@ func (c *Client) ListFiles(deviceID string) ([]string, error) {
 	}
 
 	var result FileList
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +372,7 @@ func (c *Client) ReadNode(deviceID, filename, path string) (*Node, error) {
 	}
 
 	var node Node
-	err = json.Unmarshal(resp, &node)
+	err = json.Unmarshal(resp.Body, &node)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +395,7 @@ func (c *Client) UpdateNode(deviceID, filename, path, value string) (string, err
 	}
 
 	var result APIResponse
-	err = json.Unmarshal(resp, &result)
+	err = json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", err
 	}
